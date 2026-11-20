@@ -1,8 +1,10 @@
 """Package the two Cargo macOS executables as a Universal 2 app ZIP."""
 import plistlib
+import subprocess
 import stat
 import struct
 import tomllib
+import tempfile
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
@@ -35,11 +37,20 @@ def universal_binary(arm64: bytes, x86_64: bytes) -> bytes:
     return bytes(result)
 
 
-def add_file(archive: ZipFile, name: str, data: bytes, permissions: int) -> None:
-    entry = ZipInfo("MultiCopy.app/Contents/" + name)
+def add_file(archive: ZipFile, app: Path, path: Path) -> None:
+    entry = ZipInfo("MultiCopy.app/" + path.relative_to(app).as_posix())
     entry.create_system = 3
+    permissions = path.stat().st_mode & 0o777
     entry.external_attr = (stat.S_IFREG | permissions) << 16
-    archive.writestr(entry, data, compress_type=ZIP_DEFLATED, compresslevel=9)
+    archive.writestr(entry, path.read_bytes(), compress_type=ZIP_DEFLATED, compresslevel=9)
+
+
+def sign_app(app: Path) -> None:
+    """Seal the finished bundle after creating its universal executable."""
+    subprocess.run(
+        ["/usr/bin/codesign", "--force", "--deep", "--sign", "-", "--timestamp=none", str(app)],
+        check=True,
+    )
 
 
 def main() -> None:
@@ -66,9 +77,20 @@ def main() -> None:
 
     output = ROOT / "dist" / f"MultiCopy-{version}-macOS-Universal.zip"
     output.parent.mkdir(exist_ok=True)
-    with ZipFile(output, "w") as archive:
-        add_file(archive, "Info.plist", info, 0o644)
-        add_file(archive, "MacOS/MultiCopy", binary, 0o755)
+    with tempfile.TemporaryDirectory(prefix="multicopy-package-") as temporary:
+        app = Path(temporary) / "MultiCopy.app"
+        contents = app / "Contents"
+        executable = contents / "MacOS" / "MultiCopy"
+        executable.parent.mkdir(parents=True)
+        (contents / "Info.plist").write_bytes(info)
+        (contents / "PkgInfo").write_bytes(b"APPL????")
+        executable.write_bytes(binary)
+        executable.chmod(0o755)
+        sign_app(app)
+
+        with ZipFile(output, "w") as archive:
+            for path in sorted(path for path in app.rglob("*") if path.is_file()):
+                add_file(archive, app, path)
     print(output)
 
 
