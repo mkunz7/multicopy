@@ -1,0 +1,22 @@
+[package]
+name = "multicopy"
+version = "1.0.0"
+edition = "2024"
+description = "Parallel media offloads for Windows"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+xxhash-rust = { version = "0.8", features = ["xxh64"] }
+eframe = { version = "0.31.1", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+rfd = { version = "0.15.4", default-features = false }
+tempfile = "3.20"
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Wdk_System_SystemServices", "Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_SystemInformation", "Win32_Devices_DeviceAndDriverInstallation"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+plist = "1.8"
+
+[profile.release]
+lto = "thin"
+strip = true
