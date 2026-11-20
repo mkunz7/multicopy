@@ -1,6 +1,6 @@
 # MultiCopy
 
-MultiCopy is a Rust desktop app for copying camera cards, media folders, and other large files to one or more backup drives. It runs transfers from different source disks in parallel and reads each source file once when writing to multiple destinations.
+MultiCopy is a Rust desktop app for copying camera cards, media folders, and other large files to one or more backup drives. AKA a DIT Tool. It runs transfers from different source disks in parallel and reads each source file once when writing to multiple destinations.
 
 ![MultiCopy on Windows showing source and destination drive cards](multicopy-windows.jpg)
 
